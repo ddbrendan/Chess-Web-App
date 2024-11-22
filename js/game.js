@@ -1,3 +1,4 @@
+//game.js
 class ChessGame {
     constructor() {
         this.board = new Array(8).fill(null).map(() => new Array(8).fill(null));

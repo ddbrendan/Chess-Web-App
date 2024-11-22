@@ -1,3 +1,4 @@
+//ui.js
 class ChessUI {
 
 //initialization
@@ -12,6 +13,7 @@ class ChessUI {
         this.initializeHistory();
         this.createNavigationControls();
         this.initializeKeyboardNavigation();
+        this.lastMove = null;
     }
 
     createBoard() {
@@ -125,6 +127,16 @@ class ChessUI {
             cell.innerHTML = '';
             cell.className = `cell ${(row + col) % 2 === 1 ? 'light' : 'dark'}`;
             
+            //last move highlight
+            if (this.lastMove) {
+                if (row === this.lastMove.from[0] && col === this.lastMove.from[1]) {
+                    cell.classList.add('last-move-from');
+                }
+                if (row === this.lastMove.to[0] && col === this.lastMove.to[1]) {
+                    cell.classList.add('last-move-to');
+                }
+            }
+            
             if (rowLabel) cell.appendChild(rowLabel);
             if (colLabel) cell.appendChild(colLabel);
             
@@ -169,13 +181,24 @@ class ChessUI {
                 this.updateBoard();
             }
         } else {
-            const moveResult = this.game.makeMove(this.selectedCell, [row, col]);
+            const startPos = this.selectedCell;
+            const endPos = [row, col];
+            const moveResult = this.game.makeMove(startPos, endPos);
             
             if (moveResult && moveResult.needsPromotion) {
-                this.showPromotionDialog(this.game.currentPlayer, (promotionPiece) => {
+                const pendingLastMove = {
+                    from: startPos,
+                    to: endPos
+                };
+                
+                const movingPieceColor = this.game.board[endPos[0]][endPos[1]].color;
+                
+                this.showPromotionDialog(movingPieceColor, (promotionPiece) => {
                     moveResult.callback(promotionPiece);
+                    this.lastMove = pendingLastMove;
                     this.updateBoard();
                     this.updateMoveHistory();
+                    
                     if (this.game.isCheckmate()) {
                         const winner = this.game.currentPlayer === 'white' ? 'Black' : 'White';
                         this.showGameOverMessage(`Checkmate! ${winner} wins!`);
@@ -184,8 +207,13 @@ class ChessUI {
                     }
                 });
             } else if (moveResult) {
+                this.lastMove = {
+                    from: startPos,
+                    to: endPos
+                };
                 this.updateBoard();
                 this.updateMoveHistory();
+                
                 if (this.game.isCheckmate()) {
                     const winner = this.game.currentPlayer === 'white' ? 'Black' : 'White';
                     this.showGameOverMessage(`Checkmate! ${winner} wins!`);
@@ -199,6 +227,9 @@ class ChessUI {
             this.updateBoard();
         }
     }
+    
+    
+    
     
     //chatgpt
     findLegalMoves(row, col) {
@@ -361,12 +392,25 @@ class ChessUI {
     
         if (targetMove !== this.game.currentMove) {
             this.game.goToMove(targetMove);
+            
+            // Update last move based on current position in move history
+            if (targetMove > 0 && this.game.moveHistory[targetMove - 1]) {
+                const lastHistoryMove = this.game.moveHistory[targetMove - 1];
+                this.lastMove = {
+                    from: lastHistoryMove.from,
+                    to: lastHistoryMove.to
+                };
+            } else {
+                this.lastMove = null;
+            }
+            
             this.selectedCell = null;
             this.legalMoves = [];
             this.updateBoard();
             this.updateMoveHistory();
         }
     }
+
 
 
 
