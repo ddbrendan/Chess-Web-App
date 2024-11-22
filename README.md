@@ -27,6 +27,6 @@ Future Enhancements:
 - AI opponent (probably using minimax algorithm)
 - Scrolling behaviour
 - Move history with advanced algebraic notation (captures, promotion, castling, ...)
-- Last move indicator
+- Last move highlight
 
 Chess piece images from https://commons.wikimedia.org/wiki/Category:PNG_chess_pieces/Standard_transparent
