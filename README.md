@@ -10,6 +10,7 @@ Features:
 - Legal move validation
 - Move history
 - Visual feedback for selected pieces and legal moves
+- Last move highlight
 
 Game Controls:
 - Navigate moves with arrow keys
@@ -27,6 +28,5 @@ Future Enhancements:
 - AI opponent (probably using minimax algorithm)
 - Scrolling behaviour
 - Move history with advanced algebraic notation (captures, promotion, castling, ...)
-- Last move highlight
 
 Chess piece images from https://commons.wikimedia.org/wiki/Category:PNG_chess_pieces/Standard_transparent
