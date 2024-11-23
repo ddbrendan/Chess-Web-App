@@ -11,6 +11,7 @@ Features:
 - Move history
 - Visual feedback for selected pieces and legal moves
 - Last move highlight
+- En passant moves
 
 Game Controls:
 - Navigate moves with arrow keys
@@ -18,7 +19,6 @@ Game Controls:
 - Navigation buttons for first/previous/next/last move
 
 Future Enhancements:
-- En passant moves
 - Time controls
 - Move animations
 - FEN position import/export
