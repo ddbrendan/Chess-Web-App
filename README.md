@@ -20,13 +20,16 @@ Game Controls:
 
 Future Enhancements:
 - Time controls
+- Scoreboard
 - Move animations
 - FEN position import/export
+- PGN import/export
 - Resignation
 - Draw offer
 - Draw by repetition detection
-- AI opponent (probably using minimax algorithm)
 - Scrolling behaviour
 - Move history with advanced algebraic notation (captures, promotion, castling, ...)
+- AI opponent (probably using minimax algorithm)
+- Game analysis
 
 Chess piece images from https://commons.wikimedia.org/wiki/Category:PNG_chess_pieces/Standard_transparent
