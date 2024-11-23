@@ -9,6 +9,7 @@ class ChessGame {
         this.positionHistory = [];
         this.currentMove = 0;
         this.savePosition();
+        this.lastMovedPawn = null;
     }
 
     initializeBoard() {
@@ -55,7 +56,22 @@ class ChessGame {
                 if (Math.abs(colDiff) === 1 && rowDiff === direction && targetPiece) {
                     return true;
                 }
-                return false;
+                // En passant
+                if (Math.abs(colDiff) === 1 && rowDiff === direction && !targetPiece &&
+                this.lastMovedPawn && 
+                this.lastMovedPawn.moveCount === this.currentMove - 1) {
+                const targetCol = endCol;
+                const enPassantPawn = this.board[startRow][targetCol];
+                if (enPassantPawn && 
+                    enPassantPawn.type === 'p' && 
+                    enPassantPawn.color !== piece.color &&
+                    this.lastMovedPawn.pos[1] === targetCol) {
+
+                    const lastMove = this.moveHistory[this.currentMove - 1];
+                    return lastMove && Math.abs(lastMove.from[0] - lastMove.to[0]) === 2;
+                }
+            }
+            return false;
 
             case 'r': //rook
                 return this.isValidStraightMove(startPos, endPos);
@@ -176,17 +192,45 @@ class ChessGame {
         // Store state
         const capturedPiece = this.board[endRow][endCol];
         
+        // Handle en passant capture
+        let enPassantCapture = null;
+        if (piece.type === 'p' && Math.abs(endCol - startCol) === 1 && !capturedPiece) {
+            const possibleEnPassantPawn = this.board[startRow][endCol];
+            if (possibleEnPassantPawn && 
+                possibleEnPassantPawn.type === 'p' && 
+                this.lastMovedPawn &&
+                this.lastMovedPawn.pos[1] === endCol &&
+                this.lastMovedPawn.moveCount === this.currentMove - 1) {
+                enPassantCapture = possibleEnPassantPawn;
+                this.board[startRow][endCol] = null;
+            }
+        }
+        
         // Make the move
         this.board[endRow][endCol] = piece;
         this.board[startRow][startCol] = null;
         piece.hasMoved = true;
+    
+        // Update lastMovedPawn only for double pawn moves
+        if (piece.type === 'p' && Math.abs(endRow - startRow) === 2) {
+            this.lastMovedPawn = {
+                pos: [endRow, endCol],
+                moveCount: this.currentMove
+            };
+        } else {
+            this.lastMovedPawn = null;
+        }
     
         // Check if move puts/leaves king in check
         if (this.isInCheck(this.currentPlayer)) {
             // Undo the move
             this.board[startRow][startCol] = piece;
             this.board[endRow][endCol] = capturedPiece;
+            if (enPassantCapture) {
+                this.board[startRow][endCol] = enPassantCapture;
+            }
             piece.hasMoved = false;
+            this.lastMovedPawn = null;
             return false;
         }
     
@@ -200,12 +244,12 @@ class ChessGame {
                         color: piece.color,
                         hasMoved: true
                     };
-                    this.finishMove(startPos, endPos, piece, capturedPiece);
+                    this.finishMove(startPos, endPos, piece, enPassantCapture || capturedPiece);
                 }
             };
         }
     
-        return this.finishMove(startPos, endPos, piece, capturedPiece);
+        return this.finishMove(startPos, endPos, piece, enPassantCapture || capturedPiece);
     }
     
     finishMove(startPos, endPos, piece, capturedPiece) {
@@ -213,8 +257,11 @@ class ChessGame {
             this.capturedPieces[this.currentPlayer].push(capturedPiece);
         }
     
-        this.moveHistory = this.moveHistory.slice(0, this.currentMove);
-        this.positionHistory = this.positionHistory.slice(0, this.currentMove + 1);
+        // When making a new move, truncate future moves
+        if (this.currentMove < this.moveHistory.length) {
+            this.moveHistory = this.moveHistory.slice(0, this.currentMove);
+            this.positionHistory = this.positionHistory.slice(0, this.currentMove + 1);
+        }
     
         this.moveHistory.push({
             piece: piece,
@@ -263,7 +310,6 @@ class ChessGame {
 
     
     savePosition() {
-        // Deep copy the current board
         const boardCopy = this.board.map(row => 
             row.map(piece => piece ? {...piece} : null)
         );
@@ -273,12 +319,13 @@ class ChessGame {
             capturedPieces: {
                 white: [...this.capturedPieces.white],
                 black: [...this.capturedPieces.black]
-            }
+            },
+            lastMovedPawn: this.lastMovedPawn ? {...this.lastMovedPawn} : null
         };
     }
 
     goToMove(moveNumber) {
-        if (moveNumber < 0 || moveNumber > this.positionHistory.length - 1) return false;
+        if (moveNumber < 0 || moveNumber > this.moveHistory.length) return false;
     
         const position = this.positionHistory[moveNumber];
         this.board = position.board.map(row => 
@@ -289,6 +336,7 @@ class ChessGame {
             white: [...position.capturedPieces.white],
             black: [...position.capturedPieces.black]
         };
+        this.lastMovedPawn = position.lastMovedPawn ? {...position.lastMovedPawn} : null;
         this.currentMove = moveNumber;
         
         return true;
