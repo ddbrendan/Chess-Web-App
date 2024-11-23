@@ -14,6 +14,7 @@ class ChessUI {
         this.createNavigationControls();
         this.initializeKeyboardNavigation();
         this.lastMove = null;
+        this.lastMovedPawn = null;
     }
 
     createBoard() {

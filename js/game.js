@@ -55,6 +55,21 @@ class ChessGame {
                 if (Math.abs(colDiff) === 1 && rowDiff === direction && targetPiece) {
                     return true;
                 }
+                // En passant
+                if (Math.abs(colDiff) === 1 && rowDiff === direction && !targetPiece) {
+                    // Check if there's a pawn to capture via en passant
+                    const enPassantTarget = this.board[startRow][endCol];
+                    if (enPassantTarget && 
+                        enPassantTarget.type === 'p' && 
+                        enPassantTarget.color !== piece.color &&
+                        this.lastMovedPawn &&
+                        this.lastMovedPawn.pos[0] === startRow &&
+                        this.lastMovedPawn.pos[1] === endCol &&
+                        this.lastMovedPawn.moveCount === this.currentMove - 1) {
+                            const lastMove = this.moveHistory[this.moveHistory.length - 1];
+                            return lastMove && Math.abs(lastMove.from[0] - lastMove.to[0]) === 2;
+                    }
+                }
                 return false;
 
             case 'r': //rook
@@ -176,17 +191,42 @@ class ChessGame {
         // Store state
         const capturedPiece = this.board[endRow][endCol];
         
+        // Handle en passant capture
+        let enPassantCapture = null;
+        if (piece.type === 'p' && Math.abs(endCol - startCol) === 1 && !capturedPiece) {
+            const possibleEnPassantPawn = this.board[startRow][endCol];
+            if (possibleEnPassantPawn && 
+                possibleEnPassantPawn.type === 'p' && 
+                this.lastMovedPawn && 
+                this.lastMovedPawn.pos[0] === startRow && 
+                this.lastMovedPawn.pos[1] === endCol) {
+                enPassantCapture = possibleEnPassantPawn;
+                this.board[startRow][endCol] = null;
+            }
+        }
+        
         // Make the move
         this.board[endRow][endCol] = piece;
         this.board[startRow][startCol] = null;
         piece.hasMoved = true;
+    
+        // Update lastMovedPawn for en passant
+        const isDoublePawnMove = piece.type === 'p' && Math.abs(endRow - startRow) === 2;
+        this.lastMovedPawn = isDoublePawnMove ? { 
+            pos: [endRow, endCol],
+            moveCount: this.currentMove 
+        } : null;
     
         // Check if move puts/leaves king in check
         if (this.isInCheck(this.currentPlayer)) {
             // Undo the move
             this.board[startRow][startCol] = piece;
             this.board[endRow][endCol] = capturedPiece;
+            if (enPassantCapture) {
+                this.board[startRow][endCol] = enPassantCapture;
+            }
             piece.hasMoved = false;
+            this.lastMovedPawn = null;
             return false;
         }
     
@@ -200,12 +240,12 @@ class ChessGame {
                         color: piece.color,
                         hasMoved: true
                     };
-                    this.finishMove(startPos, endPos, piece, capturedPiece);
+                    this.finishMove(startPos, endPos, piece, enPassantCapture || capturedPiece);
                 }
             };
         }
     
-        return this.finishMove(startPos, endPos, piece, capturedPiece);
+        return this.finishMove(startPos, endPos, piece, enPassantCapture || capturedPiece);
     }
     
     finishMove(startPos, endPos, piece, capturedPiece) {
@@ -263,7 +303,6 @@ class ChessGame {
 
     
     savePosition() {
-        // Deep copy the current board
         const boardCopy = this.board.map(row => 
             row.map(piece => piece ? {...piece} : null)
         );
@@ -273,7 +312,8 @@ class ChessGame {
             capturedPieces: {
                 white: [...this.capturedPieces.white],
                 black: [...this.capturedPieces.black]
-            }
+            },
+            lastMovedPawn: this.lastMovedPawn ? {...this.lastMovedPawn} : null
         };
     }
 
@@ -289,6 +329,7 @@ class ChessGame {
             white: [...position.capturedPieces.white],
             black: [...position.capturedPieces.black]
         };
+        this.lastMovedPawn = position.lastMovedPawn ? {...position.lastMovedPawn} : null;
         this.currentMove = moveNumber;
         
         return true;
