@@ -9,6 +9,7 @@ class ChessGame {
         this.positionHistory = [];
         this.currentMove = 0;
         this.savePosition();
+        this.lastMovedPawn = null;
     }
 
     initializeBoard() {
@@ -56,21 +57,21 @@ class ChessGame {
                     return true;
                 }
                 // En passant
-                if (Math.abs(colDiff) === 1 && rowDiff === direction && !targetPiece) {
-                    // Check if there's a pawn to capture via en passant
-                    const enPassantTarget = this.board[startRow][endCol];
-                    if (enPassantTarget && 
-                        enPassantTarget.type === 'p' && 
-                        enPassantTarget.color !== piece.color &&
-                        this.lastMovedPawn &&
-                        this.lastMovedPawn.pos[0] === startRow &&
-                        this.lastMovedPawn.pos[1] === endCol &&
-                        this.lastMovedPawn.moveCount === this.currentMove - 1) {
-                            const lastMove = this.moveHistory[this.moveHistory.length - 1];
-                            return lastMove && Math.abs(lastMove.from[0] - lastMove.to[0]) === 2;
-                    }
+                if (Math.abs(colDiff) === 1 && rowDiff === direction && !targetPiece &&
+                this.lastMovedPawn && 
+                this.lastMovedPawn.moveCount === this.currentMove - 1) {
+                const targetCol = endCol;
+                const enPassantPawn = this.board[startRow][targetCol];
+                if (enPassantPawn && 
+                    enPassantPawn.type === 'p' && 
+                    enPassantPawn.color !== piece.color &&
+                    this.lastMovedPawn.pos[1] === targetCol) {
+
+                    const lastMove = this.moveHistory[this.currentMove - 1];
+                    return lastMove && Math.abs(lastMove.from[0] - lastMove.to[0]) === 2;
                 }
-                return false;
+            }
+            return false;
 
             case 'r': //rook
                 return this.isValidStraightMove(startPos, endPos);
@@ -197,9 +198,9 @@ class ChessGame {
             const possibleEnPassantPawn = this.board[startRow][endCol];
             if (possibleEnPassantPawn && 
                 possibleEnPassantPawn.type === 'p' && 
-                this.lastMovedPawn && 
-                this.lastMovedPawn.pos[0] === startRow && 
-                this.lastMovedPawn.pos[1] === endCol) {
+                this.lastMovedPawn &&
+                this.lastMovedPawn.pos[1] === endCol &&
+                this.lastMovedPawn.moveCount === this.currentMove - 1) {
                 enPassantCapture = possibleEnPassantPawn;
                 this.board[startRow][endCol] = null;
             }
@@ -210,12 +211,15 @@ class ChessGame {
         this.board[startRow][startCol] = null;
         piece.hasMoved = true;
     
-        // Update lastMovedPawn for en passant
-        const isDoublePawnMove = piece.type === 'p' && Math.abs(endRow - startRow) === 2;
-        this.lastMovedPawn = isDoublePawnMove ? { 
-            pos: [endRow, endCol],
-            moveCount: this.currentMove 
-        } : null;
+        // Update lastMovedPawn only for double pawn moves
+        if (piece.type === 'p' && Math.abs(endRow - startRow) === 2) {
+            this.lastMovedPawn = {
+                pos: [endRow, endCol],
+                moveCount: this.currentMove
+            };
+        } else {
+            this.lastMovedPawn = null;
+        }
     
         // Check if move puts/leaves king in check
         if (this.isInCheck(this.currentPlayer)) {
@@ -253,8 +257,11 @@ class ChessGame {
             this.capturedPieces[this.currentPlayer].push(capturedPiece);
         }
     
-        this.moveHistory = this.moveHistory.slice(0, this.currentMove);
-        this.positionHistory = this.positionHistory.slice(0, this.currentMove + 1);
+        // When making a new move, truncate future moves
+        if (this.currentMove < this.moveHistory.length) {
+            this.moveHistory = this.moveHistory.slice(0, this.currentMove);
+            this.positionHistory = this.positionHistory.slice(0, this.currentMove + 1);
+        }
     
         this.moveHistory.push({
             piece: piece,
@@ -318,7 +325,7 @@ class ChessGame {
     }
 
     goToMove(moveNumber) {
-        if (moveNumber < 0 || moveNumber > this.positionHistory.length - 1) return false;
+        if (moveNumber < 0 || moveNumber > this.moveHistory.length) return false;
     
         const position = this.positionHistory[moveNumber];
         this.board = position.board.map(row => 
